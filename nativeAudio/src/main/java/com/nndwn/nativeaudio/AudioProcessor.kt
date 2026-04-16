@@ -1,7 +1,10 @@
 package com.nndwn.nativeaudio
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
@@ -97,5 +100,17 @@ object AudioProcessor {
         audioRecord?.stop()
         audioRecord?.release()
         audioRecord = null
+    }
+
+    @JvmStatic
+    fun isHeadsetPlugged(context: Context) : Boolean {
+        val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        val devices = audioManager.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+        return devices.any { devices ->
+            devices.type == AudioDeviceInfo.TYPE_WIRED_HEADSET ||
+                    devices.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                    devices.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
+                    devices.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+        }
     }
 }
