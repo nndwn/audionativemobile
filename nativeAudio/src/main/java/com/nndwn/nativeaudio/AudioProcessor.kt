@@ -25,8 +25,8 @@ object AudioProcessor {
     private var selectedSource = MediaRecorder.AudioSource.MIC
 
     private var useAEC = true
-    private var useAGC = false
-    private var useNS = false
+    private var useAGC = true
+    private var useNS = true
 
     private var aec: AcousticEchoCanceler? = null
     private var agc: AutomaticGainControl? = null
@@ -39,6 +39,7 @@ object AudioProcessor {
     @SuppressLint("MissingPermission")
     @JvmStatic
     fun startRecording() {
+
         if (isRecording) return
 
         val minBufSize = AudioRecord.getMinBufferSize(
@@ -60,6 +61,7 @@ object AudioProcessor {
         configureEffects(sessionId)
 
         audioRecord?.startRecording()
+
         isRecording = true
 
         val fft = DoubleFFT_1D(FRAME_SIZE.toLong())
@@ -89,18 +91,20 @@ object AudioProcessor {
 
     private fun configureEffects(sessionId: Int) {
         releaseEffects()
-        if (AcousticEchoCanceler.isAvailable() && useAEC) {
+        if (AcousticEchoCanceler.isAvailable() ) {
             aec = AcousticEchoCanceler.create(sessionId)
             aec?.enabled = useAEC
+
         }
-        if (AutomaticGainControl.isAvailable() && useAGC) {
+        if (AutomaticGainControl.isAvailable() ) {
             agc = AutomaticGainControl.create(sessionId)
             agc?.enabled = useAGC
         }
-        if (NoiseSuppressor.isAvailable() && useNS) {
+        if (NoiseSuppressor.isAvailable() ) {
             ns = NoiseSuppressor.create(sessionId)
             ns?.enabled = useNS
         }
+
     }
 
     private fun calculatePeakFrequency(fftBuffer: DoubleArray): Float {
@@ -166,6 +170,7 @@ object AudioProcessor {
 
     @JvmStatic
     fun stopRecording() {
+
         isRecording = false
         audioRecord?.stop()
         audioRecord?.release()
