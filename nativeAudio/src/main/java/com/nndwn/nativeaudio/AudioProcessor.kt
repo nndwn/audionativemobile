@@ -140,7 +140,7 @@ object AudioProcessor {
 
     @JvmStatic
     fun getAEC() : Boolean {
-        return useAEC
+        return AcousticEchoCanceler.isAvailable() && useAEC
     }
 
     @JvmStatic
@@ -150,7 +150,7 @@ object AudioProcessor {
 
     @JvmStatic
     fun getAGC() : Boolean {
-        return useAGC
+        return AutomaticGainControl.isAvailable() && useAGC
     }
 
     @JvmStatic
@@ -160,7 +160,7 @@ object AudioProcessor {
 
     @JvmStatic
     fun getNS() : Boolean {
-        return useNS
+        return NoiseSuppressor.isAvailable() && useNS
     }
 
 
