@@ -8,15 +8,29 @@ import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
+import android.media.audiofx.AutomaticGainControl
+import android.media.audiofx.NoiseSuppressor
+import androidx.annotation.Keep
 import org.jtransforms.fft.DoubleFFT_1D
 import kotlin.math.sqrt
 
+@Keep
 object AudioProcessor {
     private var audioRecord: AudioRecord? = null
     private var isRecording = false
 
     private const val SAMPLE_RATE = 44100
     private const val FRAME_SIZE = 2048
+
+    private var selectedSource = MediaRecorder.AudioSource.MIC
+
+    private var useAEC = true
+    private var useAGC = false
+    private var useNS = false
+
+    private var aec: AcousticEchoCanceler? = null
+    private var agc: AutomaticGainControl? = null
+    private var ns: NoiseSuppressor? = null
 
     @JvmStatic var latestFrequency: Float = 0f
     @JvmStatic var latestVolume: Float = 0f
@@ -34,7 +48,7 @@ object AudioProcessor {
         )
 
         audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
+            selectedSource,
             SAMPLE_RATE,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT,
@@ -42,9 +56,8 @@ object AudioProcessor {
         )
 
 
-        if (AcousticEchoCanceler.isAvailable()) {
-            AcousticEchoCanceler.create(audioRecord!!.audioSessionId).enabled = true
-        }
+        val sessionId = audioRecord!!.audioSessionId
+        configureEffects(sessionId)
 
         audioRecord?.startRecording()
         isRecording = true
@@ -74,6 +87,22 @@ object AudioProcessor {
         }.start()
     }
 
+    private fun configureEffects(sessionId: Int) {
+        releaseEffects()
+        if (AcousticEchoCanceler.isAvailable() && useAEC) {
+            aec = AcousticEchoCanceler.create(sessionId)
+            aec?.enabled = useAEC
+        }
+        if (AutomaticGainControl.isAvailable() && useAGC) {
+            agc = AutomaticGainControl.create(sessionId)
+            agc?.enabled = useAGC
+        }
+        if (NoiseSuppressor.isAvailable() && useNS) {
+            ns = NoiseSuppressor.create(sessionId)
+            ns?.enabled = useNS
+        }
+    }
+
     private fun calculatePeakFrequency(fftBuffer: DoubleArray): Float {
         var maxMagnitude = -1.0
         var maxIndex = -1
@@ -95,11 +124,53 @@ object AudioProcessor {
     }
 
     @JvmStatic
+    fun setAudioSource(value : Int) {
+        selectedSource = value;
+    }
+
+    @JvmStatic
+    fun getAudioSource() : Int {
+        return selectedSource
+    }
+
+    @JvmStatic
+    fun setAEC(value : Boolean) {
+        useAEC = value
+    }
+
+    @JvmStatic
+    fun getAEC() : Boolean {
+        return useAEC
+    }
+
+    @JvmStatic
+    fun setAGC(value : Boolean) {
+        useAGC = value
+    }
+
+    @JvmStatic
+    fun getAGC() : Boolean {
+        return useAGC
+    }
+
+    @JvmStatic
+    fun setNS(value : Boolean) {
+        useNS = value
+    }
+
+    @JvmStatic
+    fun getNS() : Boolean {
+        return useNS
+    }
+
+
+    @JvmStatic
     fun stopRecording() {
         isRecording = false
         audioRecord?.stop()
         audioRecord?.release()
         audioRecord = null
+        releaseEffects()
     }
 
     @JvmStatic
@@ -112,5 +183,15 @@ object AudioProcessor {
                     devices.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
                     devices.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
         }
+    }
+
+    private fun releaseEffects() {
+        aec?.release()
+        agc?.release()
+        ns?.release()
+
+        aec = null
+        agc = null
+        ns = null
     }
 }
