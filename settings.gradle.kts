@@ -23,5 +23,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "audioNative"
-include(":app")
 include(":nativeAudio")

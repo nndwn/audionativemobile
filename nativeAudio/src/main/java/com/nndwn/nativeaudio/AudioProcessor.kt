@@ -1,7 +1,10 @@
 package com.nndwn.nativeaudio
 
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
@@ -11,13 +14,14 @@ import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
 import androidx.annotation.Keep
+import com.unity3d.player.UnityPlayer
 import org.jtransforms.fft.DoubleFFT_1D
 import kotlin.math.sqrt
 
 @Keep
 object AudioProcessor {
     private var audioRecord: AudioRecord? = null
-    private var isRecording = false
+
 
     private const val SAMPLE_RATE = 44100
     private const val FRAME_SIZE = 2048
@@ -28,12 +32,16 @@ object AudioProcessor {
     private var useAGC = true
     private var useNS = true
 
+    private var headsetReceiver: BroadcastReceiver? = null
+
     private var aec: AcousticEchoCanceler? = null
     private var agc: AutomaticGainControl? = null
     private var ns: NoiseSuppressor? = null
 
     @JvmStatic var latestFrequency: Float = 0f
     @JvmStatic var latestVolume: Float = 0f
+
+    @JvmStatic  var isRecording = false
 
 
     @SuppressLint("MissingPermission")
@@ -187,6 +195,34 @@ object AudioProcessor {
                     devices.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
                     devices.type == AudioDeviceInfo.TYPE_BLUETOOTH_A2DP ||
                     devices.type == AudioDeviceInfo.TYPE_BLUETOOTH_SCO
+        }
+    }
+
+    @JvmStatic
+    fun startMonitoringHeadset(context: Context) {
+        if (headsetReceiver != null) return
+
+        headsetReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_HEADSET_PLUG) {
+                    val state = intent.getIntExtra("state", -1)
+                    val isPlugged = state == 1
+
+
+                    UnityPlayer.UnitySendMessage("GameManager", "OnHeadsetChanged", if (isPlugged) "1" else "0")
+                }
+            }
+        }
+
+        val filter = IntentFilter(Intent.ACTION_HEADSET_PLUG)
+        context.registerReceiver(headsetReceiver, filter)
+    }
+
+    @JvmStatic
+    fun stopMonitoringHeadset(context: Context) {
+        headsetReceiver?.let {
+            context.unregisterReceiver(it)
+            headsetReceiver = null
         }
     }
 
