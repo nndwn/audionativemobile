@@ -13,6 +13,8 @@ import android.media.MediaRecorder
 import android.media.audiofx.AcousticEchoCanceler
 import android.media.audiofx.AutomaticGainControl
 import android.media.audiofx.NoiseSuppressor
+import android.os.Build
+import android.util.Log
 import androidx.annotation.Keep
 import com.unity3d.player.UnityPlayer
 import org.jtransforms.fft.DoubleFFT_1D
@@ -131,7 +133,6 @@ object AudioProcessor {
             }
         }
 
-
         return maxIndex.toFloat() * SAMPLE_RATE.toFloat() / FRAME_SIZE.toFloat()
     }
 
@@ -201,21 +202,24 @@ object AudioProcessor {
     @JvmStatic
     fun startMonitoringHeadset(context: Context) {
         if (headsetReceiver != null) return
-
         headsetReceiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 if (intent?.action == Intent.ACTION_HEADSET_PLUG) {
                     val state = intent.getIntExtra("state", -1)
                     val isPlugged = state == 1
+                    Log.e("AudioProcessor", "Headset plugged: $isPlugged")
 
-
-                    UnityPlayer.UnitySendMessage("GameManager", "OnHeadsetChanged", if (isPlugged) "1" else "0")
+                    UnityPlayer.UnitySendMessage("Receiver", "OnHeadsetChanged", if (isPlugged) "1" else "0")
                 }
             }
         }
 
         val filter = IntentFilter(Intent.ACTION_HEADSET_PLUG)
-        context.registerReceiver(headsetReceiver, filter)
+        if (Build.VERSION.SDK_INT >= 33) {
+            context.registerReceiver(headsetReceiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            context.registerReceiver(headsetReceiver, filter)
+        }
     }
 
     @JvmStatic
